@@ -1,0 +1,36 @@
+# Example saga config for the checkout flow shown in the README.
+#
+# Run from the repository root:
+#   PYTHONPATH=examples tool-call-retry run --config examples/checkout.yml
+#
+# Step targets use "module:function" syntax, so `checkout_tools` must be
+# importable — PYTHONPATH=examples makes that work from a source checkout.
+
+name: checkout
+idempotency_key: order-123
+journal: saga.db
+
+retry:
+  max_attempts: 3
+  base_delay: 0.1
+  multiplier: 2.0
+  max_delay: 30.0
+  jitter: full
+
+steps:
+  - name: charge_card
+    do: checkout_tools:charge_card
+    compensate: checkout_tools:refund_card
+    args:
+      amount: 100
+
+  - name: reserve_inventory
+    do: checkout_tools:reserve_inventory
+    compensate: checkout_tools:release_inventory
+    args:
+      sku: SKU-42
+
+  - name: ship_package
+    do: checkout_tools:ship_package
+    args:
+      address: Rua das Flores, 10
