@@ -261,6 +261,18 @@ Named honestly so nobody plans around them:
 - **Not published on PyPI.** Install from git.
 - **No CLI schema validation** beyond malformed YAML and missing callables.
 
+If this tool is useful to you, a star helps other people find it.
+
+## Related tools
+
+- **[agent-guard](https://github.com/yunaremaia/agent-guard)** — enforce guardrails on AI agent tool calls
+- **[mcp-guard](https://github.com/yunaremaia/mcp-guard)** — audit MCP servers for unsafe permissions
+- **[context-bridge](https://github.com/yunaremaia/context-bridge)** — persistent session memory for AI agents
+- **[ci-test-gate](https://github.com/yunaremaia/ci-test-gate)** — block PRs until the required tests actually run
+
+Part of a family of focused, single-purpose developer tools — each one does one thing
+and does it well.
+
 ## License
 
 MIT
