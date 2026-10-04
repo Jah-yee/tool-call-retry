@@ -39,6 +39,19 @@ DEFAULT_RETRYABLE_EXCEPTIONS: tuple[type[BaseException], ...] = (
 JITTER_STRATEGIES = ("full", "sequential", "none")
 
 
+def _notify(
+    on_attempt: Callable[[Any], Any] | None,
+    record: Any,
+) -> None:
+    """Invoke the observer without letting it mask the real failure."""
+    if on_attempt is None:
+        return
+    try:
+        on_attempt(record)
+    except Exception as notify_exc:  # never BaseException: don't swallow Ctrl-C
+        record.error = f"{record.error or ''} (on_attempt failed: {notify_exc!r})"
+
+
 @dataclass(frozen=True)
 class RetryPolicy:
     """How many times to retry, how long to wait, and what is worth retrying.
@@ -177,17 +190,18 @@ class RetryPolicy:
                 )
                 history.append(record)
                 if not self.is_retryable(exc):
-                    if on_attempt is not None:
-                        on_attempt(record)
+                    _notify(on_attempt, record)
                     raise
                 delay = self.delay_for(attempt)
                 record.delay = delay
-                if on_attempt is not None:
-                    on_attempt(record)
+                _notify(on_attempt, record)
                 if attempt >= self.max_attempts or spent + delay > self.max_total_delay:
                     raise RetryExhausted(attempt, exc, history) from exc
                 spent += delay
-                sleeper(delay)
+                try:
+                    sleeper(delay)
+                except Exception as sleep_exc:
+                    record.error = f"{record.error} (sleep failed: {sleep_exc!r})"
             else:
                 from tool_call_retry.models import RetryAttempt
 
@@ -195,8 +209,7 @@ class RetryPolicy:
                     step_id=0, attempt=attempt, delay=0.0, succeeded=True
                 )
                 history.append(record)
-                if on_attempt is not None:
-                    on_attempt(record)
+                _notify(on_attempt, record)
                 return result
         raise AssertionError("unreachable")  # pragma: no cover
 
@@ -228,17 +241,18 @@ class RetryPolicy:
                 )
                 history.append(record)
                 if not self.is_retryable(exc):
-                    if on_attempt is not None:
-                        on_attempt(record)
+                    _notify(on_attempt, record)
                     raise
                 delay = self.delay_for(attempt)
                 record.delay = delay
-                if on_attempt is not None:
-                    on_attempt(record)
+                _notify(on_attempt, record)
                 if attempt >= self.max_attempts or spent + delay > self.max_total_delay:
                     raise RetryExhausted(attempt, exc, history) from exc
                 spent += delay
-                await _maybe_await(sleeper(delay))
+                try:
+                    await _maybe_await(sleeper(delay))
+                except Exception as sleep_exc:
+                    record.error = f"{record.error} (sleep failed: {sleep_exc!r})"
             else:
                 from tool_call_retry.models import RetryAttempt
 
@@ -246,8 +260,7 @@ class RetryPolicy:
                     step_id=0, attempt=attempt, delay=0.0, succeeded=True
                 )
                 history.append(record)
-                if on_attempt is not None:
-                    on_attempt(record)
+                _notify(on_attempt, record)
                 return result
         raise AssertionError("unreachable")  # pragma: no cover
 
