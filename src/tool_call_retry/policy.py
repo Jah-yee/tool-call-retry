@@ -49,7 +49,8 @@ def _notify(
     try:
         on_attempt(record)
     except Exception as notify_exc:  # never BaseException: don't swallow Ctrl-C
-        record.error = f"{record.error or ''} (on_attempt failed: {notify_exc!r})"
+        note = f" (on_attempt failed: {notify_exc!r})"
+        record.error = f"{record.error}{note}" if record.error else note.strip()
 
 
 @dataclass(frozen=True)
